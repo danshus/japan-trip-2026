@@ -1,0 +1,60 @@
+services:
+  japan-trip:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: japan-trip-2026:latest
+    container_name: japan-trip-2026
+
+    ports:
+      # Host port 12412 → container port 8080
+      # Point Nginx Proxy Manager at http://<server-ip>:12412
+      - "12412:8080"
+
+    restart: unless-stopped
+
+    # ── Resource limits ───────────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 128M
+        reservations:
+          cpus: "0.10"
+          memory: 32M
+
+    # ── Read-only filesystem ──────────────────────────────────────────────────
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:uid=101,gid=101
+      - /var/run:uid=101,gid=101
+
+    # ── Drop all capabilities except what nginx needs ─────────────────────────
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+
+    security_opt:
+      - no-new-privileges:true
+
+    # ── Health check ──────────────────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # ── Logging ───────────────────────────────────────────────────────────────
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    labels:
+      - "com.shustimov.project=japan-trip-2026"
+      - "com.shustimov.description=Japan Trip 2026 recap dashboard"
